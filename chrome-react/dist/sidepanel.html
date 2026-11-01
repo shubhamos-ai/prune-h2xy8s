@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Prune</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&family=Inter:wght@400;500;600&display=swap"
+    />
+    <link rel="stylesheet" href="/sidepanel.css" />
+    <script type="module" crossorigin src="/assets/sidepanel-D6es_jfq.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/DailySummaryView-COf1Wb7E.js">
+    <link rel="stylesheet" crossorigin href="/assets/DailySummaryView-BhSkK27x.css">
+    <link rel="stylesheet" crossorigin href="/assets/sidepanel-BNJA4eR2.css">
+  </head>
+  <body>
+    <main class="panel">
+      <header class="head">
+        <div class="brand">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#2E6B45" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 21v-7" />
+            <path d="M12 14c-4 0-7-3-7-8 5 0 7 3 7 8z" />
+            <path d="M12 14c0-4 2.5-7 7-7 0 4.5-3 7-7 7z" />
+          </svg>
+          <span class="brand__name">Prune</span>
+        </div>
+        <button class="icon-btn" id="settings-link" type="button" aria-controls="settings-view" aria-expanded="false" aria-label="Settings">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1F3A2E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />
+          </svg>
+        </button>
+      </header>
+
+      <div class="panel-view" id="garden-view" role="region" aria-label="Garden">
+      <!-- Session controls -->
+      <section class="card session-card" aria-labelledby="session-heading" data-state="idle">
+        <div class="session__heading">
+          <div><span class="session__eyebrow">A little more mindful</span><h2 id="session-heading">Your session</h2></div>
+          <span id="session-status" class="session__badge" role="status">Loading...</span>
+        </div>
+        <div class="session__overview" id="session-stats" aria-label="Session statistics">
+          <div class="session__metric"><span>Time scrolling</span><strong id="session-time">0:00</strong></div>
+          <div class="session__metric"><span>Videos watched</span><strong id="session-count">0</strong></div>
+        </div>
+        <button class="btn btn--dark session__start" id="session-toggle" type="button" disabled>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path class="session__play" d="M8 5v14l11-7z"/><rect class="session__stop" x="6" y="6" width="12" height="12" rx="2"/></svg>
+          <span id="session-toggle-label">Start session</span>
+        </button>
+        <p class="session__hint" id="session-note">Start a session, then scroll as usual. Finish to grow your topic tree.</p>
+        <div class="audio-monitor" aria-label="Audio options">
+          <div class="session__audio-head">
+            <label class="session__audio-option" for="audio-enabled">
+              <span><strong>Include video audio</strong><small>Understand the speech in your videos.</small></span>
+              <input id="audio-enabled" type="checkbox" role="switch" checked />
+            </label>
+          </div>
+          <div class="session__audio-status"><strong id="audio-state" data-tone="inactive">Not recording</strong></div>
+          <p id="audio-status" role="status">Open a video tab and click Prune in Chrome's toolbar to connect audio.</p>
+          <details class="session__audio-details">
+            <summary>Audio details &amp; controls</summary>
+            <p class="note-sm" id="audio-model">Checking speech recognition...</p>
+            <p class="note-sm" id="audio-progress">No audio uploaded.</p>
+            <p class="note-sm" id="audio-transcript">No transcript available yet.</p>
+            <button class="btn btn--outline" id="audio-toggle" type="button">Connect video audio</button>
+          </details>
+        </div>
+        <p class="session__error" id="session-error" role="alert" hidden></p>
+        <a class="session__review" id="session-review" href="popup.html?view=summary" target="_blank" rel="noopener" hidden>View your latest review <span aria-hidden="true">?</span></a>
+      </section>
+
+      <!-- Today so far -->
+      <section class="card" aria-labelledby="today-heading">
+        <div class="card__row card__row--baseline">
+          <span class="eyebrow" id="today-heading">Today so far</span>
+          <span class="note-sm" id="today-count"></span>
+        </div>
+        <p class="note-sm">Past 24 hours · across sessions</p>
+        <div class="meter" id="meter" role="img" aria-label="Share of warnings among assessed warnings and positive insights in the past 24 hours">
+          <div class="meter__seg meter__seg--calm"></div>
+          <div class="meter__seg meter__seg--some"></div>
+          <div class="meter__seg meter__seg--heavy"></div>
+          <div class="meter__marker" id="meter-marker" hidden></div>
+        </div>
+        <div class="meter__labels"><span>More positive insights</span><span>Mixed</span><span>More warnings</span></div>
+        <span class="today__summary" id="today-summary"></span>
+        <p class="note-sm" id="today-comments"></p>
+        <details class="today-videos"><summary>Recent videos · latest 20</summary><ul id="today-video-list"></ul></details>
+      </section>
+
+      <!-- Feed tree -->
+      <section class="card" aria-labelledby="tree-heading">
+        <div class="card__row">
+          <span class="h2" id="tree-heading">Your feed tree</span>
+          <span class="chip chip--sm" id="tree-health"></span>
+        </div>
+        <!-- <span class="note">
+          Your saved topics grow into branches, with child topics growing from their parents.
+          Pruning drops a branch and all its children. Leaf color is unrated until hostility data is available.
+        </span> -->
+        <div class="tree-risk-legend" aria-label="Leaf color scale">
+          <span><i style="background: #a8c394"></i>Lower</span><span><i style="background: #d8bf86"></i>Some</span><span><i style="background: #cb9582"></i>Higher</span><span><i style="background: #d8ded3"></i>Unrated</span>
+        </div>
+          <details class="tree-risk-explanation"><summary>How leaf colors are scaled</summary><p>Leaf colors are scaled relative to your saved topics: the lowest score is green, the highest is red, and scores between them blend through amber. Even small differences use the full color range. If all scores are equal, colors use the underlying score. Warning counts use a logarithmic scale from 0 to 1, capped at 4 warnings per video. Negative comments are divided by all rated comments for each video. Each measure is averaged across videos, then available measures get equal weight. Larger topics and popular videos do not automatically score higher. Missing analysis is excluded; gray means no usable data. Red means relatively stronger signals in this tree, not a diagnosis of harm. Review redder topics to decide what to prune. Click a topic for counts and analysis coverage, including child topics.</p></details>
+        <div class="tree-viewport">
+        <div class="tree-zoom" role="group" aria-label="Tree zoom controls">
+          <button class="btn btn--outline" id="tree-zoom-out" type="button" aria-label="Zoom out" title="Zoom out"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3M8 11h6"/></svg></button>
+          <button class="btn btn--outline" id="tree-zoom-in" type="button" aria-label="Zoom in" title="Zoom in"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3M8 11h6M11 8v6"/></svg></button>
+          <button class="btn btn--outline" id="tree-zoom-reset" type="button">Fit tree</button>
+        </div>
+        <div class="tree" id="tree" tabindex="0" aria-label="Topic tree. Drag to pan. Use the mouse wheel or zoom buttons to zoom."></div>
+        </div>
+        <div id="topic-inspector"></div>
+
+        <p class="note" id="topic-tree-status" role="status" hidden></p>
+        <span class="eyebrow">Topics and child branches</span>
+        <div class="branches" id="branches" tabindex="0" role="region" aria-label="Scrollable topic list"></div>
+        <div class="tree-actions">
+        <a class="link-card" id="full-tree-link" href="#" target="_blank" rel="noopener">
+          <span>See your full tree</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1F3A2E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M7 17 17 7" />
+            <path d="M8 7h9v9" />
+          </svg>
+        </a>
+          <button class="btn btn--danger" id="tree-reset" type="button">Reset tree</button>
+        </div>
+        <span class="note" id="tree-reset-status" role="status" hidden></span>
+      </section>
+
+      <!-- Calendar -->
+      <section class="card cal" aria-labelledby="cal-heading">
+        <div class="cal__header">
+            <button class="icon-btn" id="cal-prev" type="button" aria-label="Previous month">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1F3A2E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+            </button>
+            <div class="cal__title"><h2 class="h2" id="cal-heading"></h2><span>Choose a day to explore</span></div>
+            <button class="icon-btn" id="cal-next" type="button" aria-label="Next month">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1F3A2E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+            </button>
+        </div>
+        <div class="cal__week" aria-hidden="true">
+          <span>MON</span><span>TUE</span><span>WED</span><span>THU</span><span>FRI</span><span>SAT</span><span>SUN</span>
+        </div>
+        <div class="cal__grid" id="cal-grid"></div>
+        <div class="cal__legend">
+          <span><i class="swatch swatch--calm"></i>Activity</span>
+          <span><i class="swatch swatch--some"></i>Unrated</span>
+          <span><i class="swatch swatch--heavy"></i>Concerns</span>
+        </div>
+        <span class="note">Choose a recorded day to explore its topics and videos.</span>
+      </section>
+
+      </div>
+      <section class="card settings-view" id="settings-view" role="region" aria-labelledby="collection-settings-heading" hidden>
+        <button class="settings-back" id="settings-back" type="button">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 19-7-7 7-7M5 12h14"/></svg>
+          Back to garden
+        </button>
+        <div><span class="session__eyebrow">Make room for what matters</span><h2 class="h2" id="collection-settings-heading">Collection settings</h2></div>
+        <label class="session__audio-option" for="skip-short-videos">
+          <span><strong>Skip quick scrolls</strong><small>Only collect videos you spend time watching.</small></span>
+          <input id="skip-short-videos" type="checkbox" role="switch" disabled />
+        </label>
+        <div class="watch-cutoff-heading"><label for="minimum-watch-seconds">Minimum watch time</label><output id="minimum-watch-value" for="minimum-watch-seconds">0 seconds</output></div>
+        <input id="minimum-watch-seconds" type="range" min="0" max="10" step="1" value="0" disabled />
+        <div class="watch-cutoff-scale" aria-hidden="true"><span>0 ? Collect all</span><span>10 seconds</span></div>
+        <p class="note" id="collection-setting-description">All played videos are collected.</p>
+        <p class="fine">Changes apply to new sessions. Skipped videos are excluded from your count, topics, and model input. Their audio is not uploaded for transcription. Eligible videos keep their opening audio.</p>
+        <p class="session__error" id="collection-settings-error" role="alert" hidden></p>
+        <span class="note-sm" id="collection-settings-saved" role="status"></span>
+        <hr />
+        <div class="watch-cutoff-heading"><label for="detection-delay">Detection delay</label><output id="detection-delay-value" for="detection-delay">1.5 seconds</output></div>
+        <input id="detection-delay" type="range" min="1.5" max="10" step="0.5" value="1.5" aria-describedby="detection-delay-description" disabled />
+        <div class="watch-cutoff-scale" aria-hidden="true"><span>1.5 seconds</span><span>10 seconds</span></div>
+        <p class="note" id="detection-delay-description">Wait this long while a video is visibly playing before checking for topics you've pruned.</p>
+        <p class="fine">Changes apply immediately to open video tabs. This does not change which videos are collected for your session.</p>
+        <span class="note-sm" id="detection-delay-saved" role="status"></span>
+        <p class="session__error" id="detection-delay-error" role="alert" hidden></p>
+        <label class="session__audio-option" for="auto-skip-topics">
+          <span><strong>Automatically skip pruned topics</strong><small>Move to the next video when a pruned topic is detected. An alert names the topic that was skipped.</small></span>
+          <input id="auto-skip-topics" type="checkbox" role="switch" aria-describedby="auto-skip-error" disabled />
+        </label>
+        <p class="session__error" id="auto-skip-error" role="alert" hidden></p>
+      </section>
+      <section class="card detection-topics" aria-labelledby="detection-topics-heading" aria-busy="true">
+        <div class="card__row">
+          <h2 class="h2" id="detection-topics-heading">Compost List</h2>
+          <span class="chip chip--sm" id="detection-topics-count">0</span>
+        </div>
+        <p class="note-sm">Your pruned topics, gathered here. Unprune a branch to let it grow back.</p>
+        <div class="detection-compost" id="detection-compost" role="img" aria-label="Loading compost pile"></div>
+        <p class="note-sm" id="detection-topics-feedback" role="status" hidden></p>
+        <p class="note-sm" id="detection-topics-status" role="status">Loading pruned topics…</p>
+        <ul class="detection-topics__list" id="detection-topics-list" aria-label="Pruned topics used for detection"></ul>
+        <div class="compost-footer">
+          <button id="compost-clear" class="compost-clear" type="button" aria-describedby="compost-clear-note" disabled><span id="compost-clear-icon" aria-hidden="true"></span>Clear list</button>
+        </div>
+      </section>
+
+            <div class="foot">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5B6B62" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 1px">
+          <circle cx="12" cy="12" r="10" />
+          <path d="M12 16v-4" />
+          <path d="M12 8h.01" />
+        </svg>
+        <span>
+          Hostility means comments that demean or attack a real person. Scores are estimated by AI from each video's
+          comments. <a id="measure-link" href="#" target="_blank" rel="noopener">How we measure this</a>
+        </span>
+      </div>
+
+    </main>
+
+    <script src="/collection-policy.js"></script>
+    <script src="/detection-core.js"></script>
+    <script src="/audio-status.js"></script>
+    <script src="/daily-activity.js"></script>
+    <script src="/compost.js"></script>
+  </body>
+</html>

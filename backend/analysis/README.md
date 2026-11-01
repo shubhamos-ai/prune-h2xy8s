@@ -1,0 +1,164 @@
+# Analysis and completed-session topics
+
+While scrolling, the extension records playback identities, dwell time, available metadata and audio. Audio is enabled by default and is transcribed locally. A transcription failure disables audio for the affected session while metadata/comment analysis continues. The backend computes RoBERTa sentiment locally and uses UF NaviGator for individual assessments and completed-session topics without MongoDB. No topic discovery runs on event upload or on an individual video assessment. See [the audio/provider guide](AUDIO_PIPELINE.md) for timing, evidence cutoffs and failure behavior.
+
+**Finish and review session** uploads the last video, completes the backend session, and queues topic discovery. Gemma adds the session's videos to your global topic tree, reusing existing categories before creating new branches. The tree persists across sessions and backend restarts, includes earlier videos, and remains visible while the next review processes. The React extension shows expandable branches, unique video counts across sessions, source videos, saved **See less** preferences, and the validated session JSON. Individual video analysis remains specific to the reviewed session. Selecting a parent includes descendants; selecting a child affects that branch. Preferences persist for future matching. The extension does not yet hide videos or modify platform recommendations.
+
+## Setup
+
+From the repository root in PowerShell:
+
+```powershell
+cd backend
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+Copy-Item ../.env.example ../.env # Only if the root .env does not already exist
+```
+
+Configure `YOUTUBE_API_KEY` in the repository-root `.env` for YouTube metadata and comment fetching. The extension's default review path requires **no MongoDB URI, connection, or seeded user**. Without a YouTube key, captured title/caption data can still support topics; missing comment/context results are explicitly marked unavailable.
+
+`MONGODB_URI`/`MONGODB_DB` are optional for legacy `/sessions`, `/videos`, and Instagram persistence endpoints. `MONGODB_SESSION_JOBS_ENABLED=true` enables recovery of legacy MongoDB jobs; it defaults to false. The local session worker runs independently.
+
+Set `NAVIGATOR_TOOLKIT_API_KEY` in the repository-root `.env` using a UF Toolkit key authorized for `gemma-4-31b-it`. The defaults are:
+
+```dotenv
+ASSESSMENT_PROVIDER=navigator
+TOPIC_PROVIDER=navigator
+NAVIGATOR_BASE_URL=https://api.ai.it.ufl.edu/v1
+NAVIGATOR_MODEL=gemma-4-31b-it
+NAVIGATOR_RESPONSE_FORMAT=auto
+AUDIO_ENABLED=true
+AUDIO_DISABLE_ON_FAILURE=true
+```
+
+Run `python -m analysis.navigator_client` from `backend/` to verify authentication and model access through UF's `/v1/models` endpoint. The API key stays in backend configuration. No live Navigator request can succeed until that key is configured.
+
+Ollama is optional. To use local generation, set `ASSESSMENT_PROVIDER=ollama` and `TOPIC_PROVIDER=ollama`, then install Ollama and download the configured model:
+
+```powershell
+ollama pull gemma4:e2b
+```
+
+For that optional local mode, keep Ollama running; run `ollama serve` if needed. These settings configure local inference and its optional fallback:
+
+```dotenv
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=gemma4:e2b
+OLLAMA_TIMEOUT=300
+GEMINI_FALLBACK_ENABLED=true
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini-3.8-flash
+GEMINI_TIMEOUT=60
+```
+
+Gemini fallback applies only when Ollama is selected. It requires a server-side key with access to the configured model. Navigator failures retain local evidence and do not switch providers. Restart the backend after configuration changes. Do not put API keys in extension files.
+
+```powershell
+python -m uvicorn app.main:app --reload --port 8000
+```
+
+`GET /local-sessions/health` verifies local storage and returns `mongodb_required: false`. The older `GET /health` checks MongoDB only; its 503 does not block extension session reviews. The model checks below work independently of MongoDB:
+
+```powershell
+python -m analysis.ollama_client --check
+python -m analysis.ollama_client "Reply with exactly: local prompting works"
+```
+
+The first lists installation status; the second verifies inference. `GET /analysis/ollama/status` and `POST /analysis/prompt` provide equivalent API access.
+
+Build and load [the React extension](../../chrome-react/README.md) to finish and review sessions. The single-video [test dashboard](../../test-dashboard/README.md) remains available for inspecting comment sentiment and content assessment.
+
+## Contracts and pipeline
+
+`POST /analysis/video-assessment` accepts metadata, optional `sentiment_balance`, up to 12 comments, and bounded transcript excerpts/coverage/missing-evidence flags. Usable speech can support an assessment without metadata. Responses include validated evidence references and provider provenance:
+
+```json
+{
+  "negative_for_user": "uncertain",
+  "reason": "The available evidence does not establish a negative impact.",
+  "context_summary": "A tutorial demonstrates React components.",
+  "content_signals": [],
+  "signal_polarities": {},
+  "web_search": {"status": "disabled", "query": null, "sources": [], "warning": null},
+  "provider": "navigator",
+  "model": "gemma-4-31b-it",
+  "fallback_used": false,
+  "fallback_reason": null
+}
+```
+
+There are no topic, category, or subcategory fields in this response. Existing clients expecting the old topic schema need updating. `taxonomy.py` now defines only fixed content signals and their positive/negative polarity. `GET /analysis/taxonomy` exposes those signals and declares `classification_scope: completed_session`; its legacy `categories` list is empty.
+
+RoBERTa's aggregate sentiment balance remains `(positive_count - negative_count) / (positive_count + negative_count)`, excluding neutral comments. Empty/all-neutral samples have null balance. The balance measures direction, not severity or sample size. Comments are supporting context, not verified evidence of a video's subject.
+
+The assessment can also be run directly:
+
+```powershell
+python -m analysis.video_assessment --title "A React tutorial" --caption "Building reusable components" --sentiment-balance 0.5 --comment "Helpful explanation"
+```
+
+Video assessment and topic discovery always disable web search and provider tools, including when `OLLAMA_WEB_SEARCH_ENABLED=true`. Models receive collected evidence and cannot choose URLs, run tools, or execute commands.
+
+The extension now uses these MongoDB-free endpoints:
+
+| Request | Behavior |
+| --- | --- |
+| `POST /local-sessions/{uuid}/finish` | Accept an immutable snapshot of `events` (existing video event format) and optional `instagram` evidence, persist locally, and queue analysis. Returns 202 immediately. Repeating an identical snapshot is safe; changing it under the same ID returns 409. |
+| `GET /local-sessions/{uuid}/taxonomy` | Read progress, the topic tree, unique video counts, and individual `videos[].analysis` results. |
+| `POST /local-sessions/{uuid}/taxonomy/retry` | Retry a partial/failed review, preserving successful work and reusing unchanged model evidence. |
+| `PATCH /local-sessions/{uuid}/taxonomy/preferences` | Save a category preference. |
+| `PATCH /local-sessions/{uuid}/taxonomy/categories/{id}` | Rename, move, or merge a local category. |
+
+Local review jobs and results use the same `backend/.cache/session_topics.sqlite3` file as category identities. Each video's analysis contains its content assessment (including provider/fallback flags), sentiment summary, bounded comment sample, and explicit errors for unavailable evidence/providers. Failures preserve videos and available results; they do not fabricate scores or discard the whole summary. Video identities, repeat-view counts, and dwell time remain separate from topic membership. Individual assessments do not output topic labels.
+
+A local worker polls pending jobs every 10 seconds and renews processing leases every 30 seconds. Expired leases older than 15 minutes can be resumed after restart. Successful individual assessments are reused on retries with unchanged evidence; topic batches are checkpointed by evidence fingerprint. Closing the popup does not interrupt backend work. The latest fetched summary is cached in Chrome for offline viewing. Reopening a popup after a backend restart will refresh it from local storage.
+
+Legacy MongoDB sessions remain available separately through these endpoints:
+
+| Request | Behavior |
+| --- | --- |
+| `POST /sessions` | Create an active session for an existing user. |
+| `POST /sessions/{id}/events` | Persist events and queue metadata/sentiment work, without topic discovery. |
+| `PATCH /sessions/{id}/finish` | Complete and queue discovery atomically; repeating finish does not queue another job. |
+| `GET /sessions/{id}/taxonomy` | Read processing status, tree, assignments, video identities, preferences, and provider provenance. Active sessions return 409. |
+| `POST /sessions/{id}/taxonomy/retry` | Retry failed/partial discovery, reusing successful batches. |
+| `PATCH /sessions/{id}/taxonomy/preferences` | Save `{"category_id":"stable-id","reduce":true}` for the session owner. |
+| `PATCH /sessions/{id}/taxonomy/categories/{category_id}` | Rename with `{"name":"React Tutorials"}`, move with `{"move":true,"parent_id":"parent-id"}` (null for root), or merge with `{"merge_into":"target-id"}`. |
+
+Topic results contain `status` (`pending`, `processing`, `complete`, `partial`, `failed`, or `insufficient_data`), a recursive global `tree`, session `assignments` mapping video IDs to stable category IDs, `unclassified_video_ids`, and session source `videos`. `tree_scope` is `global`; `tree_assignments`, `tree_videos`, and `global_video_count` describe the combined saved history for this user. `reduce_video_ids` also covers that global history. Nodes contain `id`, `name`, `description`, `parent_id`, `video_count`, `video_ids`, `children`, and preference flags `selected`, `inherited`, and `reduce`. Parent counts use the union of descendant video identities across sessions, even when videos belong to multiple branches. A repeated video counts once; its latest completed classification replaces its earlier global assignments. Existing categories remain in the tree even when they have no current videos. Previously saved reviews are included automatically without running the model again. Video identities include their platform (`youtube:ID` or `instagram:ID`).
+
+Each accepted batch reports provider/model/fallback provenance in `batches`; `fallback_used` summarizes accepted Gemini results. The popup flags Gemini use. Failed batches remain explicitly unclassified and retain their error instead of accepting malformed output.
+
+## Dynamic identities and bounded discovery
+
+`session_classification.py` updates the persistent global hierarchy from each completed session, with no fixed topic list. It requests meaningful variable depth, reusable genres/game titles/interests, and supported distinctions rather than categories describing individual clips. Sparse groups use general supported categories (for example Programming, Gaming, or Music). The prompt normally asks for at least two distinct related videos before creating a niche label; repeat views do not provide extra support. A single new video with clear title/caption evidence can join an existing niche branch. Larger sessions may mix broad categories for isolated interests with niche branches for recurring interests. This is model guidance, not a hard-coded topic list or a guarantee of perfect granularity. The eight-level depth limit is a safety ceiling, not a required hierarchy shape. Comments alone cannot make a metadata-free video eligible.
+
+Large sessions are split into batches of at most 12 videos and 7,000 serialized evidence characters. Individual evidence fields are excerpted; identities are retained. Each batch includes up to 24 candidate categories within a separate 5,000-character budget. Discovery uses a 16,384-token context window and bounded output. Thus large sessions require multiple bounded calls after completion, rather than one call per video. Earlier batches feed the persistent catalog used by later batches. Grouping quality depends on available excerpts and model output.
+
+`topic_store.py` stores the user-scoped catalog, aliases, preferences, batch checkpoints, and completed results in `backend/.cache/session_topics.sqlite3` using SQLite and parameterized statements. Keep this file when restarting or updating the app: deleting it loses category identities and preferences. Back it up along with MongoDB. It is ignored by Git. This local store assumes backend processes share the same disk; a distributed deployment would need a shared transactional store.
+
+The catalog first retrieves candidates using lexical overlap, including aliases, and includes matching branches' ancestors within the same input budget. Gemma/Gemini then compares meanings and explicitly references existing stable IDs for semantic reuse. Exact normalized names/aliases under the same parent provide another duplicate check. This is model-assisted semantic matching, not an embedding index, and can miss synonyms outside the bounded candidate set. Users can merge duplicates in the popup. Rename/reparent preserve IDs; merge aliases redirect old assignments/preferences to the surviving ID. Automatic discovery preserves reused categories' names and parents; manual category edits apply across the global tree.
+
+Structured JSON is validated before persistence: duplicate keys, unknown IDs, extra fields, cycles, orphan parents, empty unsupported nodes, incomplete coverage, duplicate assignments, and invalid category references are rejected. One local regeneration is allowed, then Gemini is tried for provider failures or invalid output. Output is data only; it is never evaluated or executed. React displays text/JSON without HTML injection. No model-generated network actions are allowed.
+
+MongoDB records pending/processing/final session status. An atomic claim prevents duplicate workers. Startup recovery polls every 30 seconds; processing leases older than 15 minutes are retried, with a heartbeat while work runs. Successful batch checkpoints avoid repeated inference on explicit retries. Insufficient metadata produces an explicit result without calling the topic model. Finishing does not wait for every in-flight per-video sentiment job; discovery uses evidence available at collection time and fetches missing YouTube metadata when possible.
+
+Local reviews use the `local_extension` catalog on this backend; legacy MongoDB sessions retain their existing user identities. This development app does not provide account authentication.
+
+## Checks
+
+From `backend/`:
+
+```powershell
+python -m pip install -r requirements-dev.txt
+python -m pytest tests -q -p no:cacheprovider
+```
+
+Tests cover content-only assessment, strict output handling, fallback provenance, session lifecycle, hierarchy integrity, identity reuse, parent/child preference behavior, catalog edits, input bounds, partial retries, and batch caching. Provider failure tests use mocks; they do not establish hosted service availability.
+
+## Guaranteed video coverage
+
+The extension's **Reset entire tree** button asks for confirmation, then calls `DELETE /local-sessions/taxonomy`. It removes the local extension user's categories, aliases, cross-session memberships, See less preferences, and topic batch checkpoints. Individual video analyses and recorded session results are retained. Existing reviews show an empty tree after reset; future completed sessions build a new tree. Reset returns 409 while a local review is pending or processing, preventing in-flight classification from restoring deleted branches. Chrome's cached tree and pruning selections are cleared only after the backend succeeds.
+
+Every nonempty completed review assigns every video to at least one category. Broad, supported topics are preferred when niche evidence is sparse. Videos without usable metadata, model abstentions, and videos in failed provider batches are assigned by application code to a stable **General / Other** category. This category describes an unavailable topic, rather than inventing one. `fallback_video_ids` identifies these application-assigned videos; `unclassified_video_ids` is empty in completed review results. Provider errors and partial/failed/insufficient-data status remain visible, and retry can replace the fallback with a supported topic. Historical saved reviews are not regenerated automatically.
